@@ -62,21 +62,39 @@ setup_env() {
     
     if [ ! -f ".env.local" ]; then
         print_message $YELLOW "Creating default .env.local file..."
-        cat > .env.local << 'EOF'
-NEXT_PUBLIC_API_URL=http://localhost:8000/api
+        
+        read -p "Frontend port (default: 3000): " FE_PORT
+        FE_PORT=${FE_PORT:-3000}
+        
+        read -p "Backend API URL (default: http://localhost:8000/api): " API_URL
+        API_URL=${API_URL:-http://localhost:8000/api}
+        
+        cat > .env.local << EOF
+NEXT_PUBLIC_API_URL=$API_URL
+PORT=$FE_PORT
 EOF
         print_message $GREEN "✓ Default .env.local file created"
+        print_message $GREEN "✓ Frontend will run on port $FE_PORT"
     else
         print_message $GREEN "✓ .env.local file exists"
     fi
+}
+
+# Get port from .env.local or default to 3000
+get_port() {
+    if [ -f ".env.local" ]; then
+        PORT=$(grep "^PORT=" .env.local 2>/dev/null | cut -d'=' -f2)
+    fi
+    echo ${PORT:-3000}
 }
 
 # Start development server
 dev() {
     print_header "Starting Development Server"
     
-    print_message $GREEN "Frontend running at: http://localhost:3000"
-    npm run dev
+    FE_PORT=$(get_port)
+    print_message $GREEN "Frontend running at: http://localhost:$FE_PORT"
+    npm run dev -- -p $FE_PORT
 }
 
 # Build for production
@@ -91,8 +109,9 @@ build() {
 prod() {
     print_header "Starting Production Server"
     
-    print_message $GREEN "Frontend running at: http://localhost:3000"
-    npm run start
+    FE_PORT=$(get_port)
+    print_message $GREEN "Frontend running at: http://localhost:$FE_PORT"
+    npm run start -- -p $FE_PORT
 }
 
 # Run linter
@@ -106,11 +125,12 @@ lint() {
 status() {
     print_header "Frontend Status"
     
-    if lsof -i :3000 > /dev/null 2>&1; then
-        print_message $GREEN "✓ Frontend is running on port 3000"
-        lsof -i :3000
+    FE_PORT=$(get_port)
+    if lsof -i :$FE_PORT > /dev/null 2>&1; then
+        print_message $GREEN "✓ Frontend is running on port $FE_PORT"
+        lsof -i :$FE_PORT
     else
-        print_message $YELLOW "Frontend is not running"
+        print_message $YELLOW "Frontend is not running on port $FE_PORT"
     fi
 }
 
